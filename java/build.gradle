@@ -1,0 +1,121 @@
+group 'nevi.me'
+version '0.0.1'
+
+apply plugin: 'java'
+apply plugin: 'application'
+apply plugin: 'kotlin'
+apply plugin: 'idea'
+apply plugin: 'com.google.protobuf'
+
+// mainClassName = "io.grpc.benchmarks.HttpJsonServer"
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+buildscript {
+    ext.kotlin_version = '1.0.3'
+    ext.grpc_version = '1.0.1'
+
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.7.7'
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    compile "org.jetbrains.kotlin:kotlin-runtime:$kotlin_version"
+    compile 'io.reactivex:rxjava:1.1.9'
+    compile "org.json:json:20160810"
+    compile "io.grpc:grpc-netty:$grpc_version"
+    compile "io.grpc:grpc-protobuf:$grpc_version"
+    compile "io.grpc:grpc-stub:$grpc_version"
+    compile 'javax.annotation:javax.annotation-api:1.2'
+    testCompile group: 'junit', name: 'junit', version: '4.11'
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.0.2"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:$grpc_version"
+        }
+    }
+
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {}
+        }
+    }
+    generatedFilesBaseDir = "$projectDir/src/generated"
+}
+
+sourceSets {
+    main {
+        proto {
+            srcDir 'src/main/proto' // src/main/proto
+        }
+        java {
+            // include self written and generated code
+            srcDirs 'src/main/java', 'src/generated/main/java', 'src/generated/main/grpc'
+        }
+    }
+}
+
+mainClassName = 'server.MainKt'
+
+clean {
+    delete "${projectDir}/src/generated"
+}
+
+// Let intellij projects refer to generated code
+idea {
+    module {
+        sourceDirs += file("${projectDir}/src/generated/main/java");
+        sourceDirs += file("${projectDir}/src/generated/main/grpc");
+    }
+}
+
+//startScripts.enabled = false
+
+task interchangeServer(type: CreateStartScripts) {
+    mainClassName = 'server.InterchangeServer'
+    applicationName = 'interchange-server'
+    outputDir = new File(project.buildDir, 'tmp')
+    classpath = jar.outputs.files + project.configurations.runtime
+}
+
+//create a single Jar with all dependencies
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'TransitServer GRPC',
+                'Implementation-Version': version,
+                'Main-Class': 'server.MainKt'
+    }
+    baseName = project.name + '-all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+
+jar {
+    from {
+        configurations.compile.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+}
+
+applicationDistribution.into('bin') {
+    from(interchangeServer)
+    fileMode = 0755
+}
