@@ -1,14 +1,16 @@
 package server
 
+import io.grpc.Metadata
 import io.grpc.Server
 import io.grpc.ServerBuilder
+import io.grpc.Status
+import io.grpc.StatusRuntimeException
 import io.grpc.stub.StreamObserver
 import rx.Subscriber
 import java.io.IOException
 import java.util.logging.Logger
 import proto.*
 import rx.Observable
-import java.util.concurrent.TimeUnit
 
 /**
  * Created by Neville on 9/18/2016.
@@ -67,7 +69,42 @@ class InterchangeServer(serverBuilder: ServerBuilder<*>, port:Int) {
 
         }
 
-        override fun streamPackages(request: InterchangeProtos.ObjectID?, responseObserver: StreamObserver<InterchangeProtos.Package>) {
+        override fun streamPackages(request: InterchangeProtos.ObjectID, responseObserver: StreamObserver<InterchangeProtos.Package>) {
+
+            // as an example, return an error with metadata if ObjectID == "error"
+            // please remember that these are just demos to help people with some concepts within gRPC
+            // for people who aren't familiar/comfortable with Kotlin, I've added types for each variable so you can follow
+
+            if (request.id == "error") {
+                // create new trailer metadata
+                val trailerMeta: Metadata = Metadata()
+
+                // add string metadata, note that you use ASCII_STRING_MARSHALLER
+                trailerMeta.put(Metadata.Key.of("String-header", Metadata.ASCII_STRING_MARSHALLER), "a string field")
+
+                // create a Protobuf message that we can send as the binary trailer key
+                val trailerPackage: InterchangeProtos.Package.Builder = InterchangeProtos.Package
+                        .newBuilder()
+                        .setName("Error Package")
+
+                // build the trailerPackage, and convert it to a ByteArray
+                // note that the key of binary payload should end with "-bin"
+                trailerMeta.put(Metadata.Key
+                        .of("Binary-header-bin", Metadata.BINARY_BYTE_MARSHALLER), trailerPackage.build().toByteArray())
+
+                // Construct our StatusRuntimeException, which we'll send with the onError.
+                // Notice that I'm passing the metadata into the SRE.
+                // When you throw the default SRE, the client gets a default, which I believe is Status.Code.INTERNAL,
+                // so to offer more details, you should change it to something else. Refer to the HTTP - gRPC error mapping
+                val error: StatusRuntimeException = StatusRuntimeException(Status.fromCode(Status.Code.INVALID_ARGUMENT)
+                        .withDescription("You supplied an incorrect object ID"), trailerMeta)
+
+                // now send an onError with the error message that you've just created
+                responseObserver.onError(error)
+                
+                return
+            }
+
             val packages: MutableList<InterchangeProtos.Package> = mutableListOf()
 
             val names = listOf("Package 1", "Package 2", "Package 3")
