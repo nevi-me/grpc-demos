@@ -1,4 +1,9 @@
+# nodejs
 node_modules/
+
+# java
 java/.gradle/
 java/.idea/
 java/build/
+java/out/
+java/src/generated/
