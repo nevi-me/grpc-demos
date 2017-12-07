@@ -6,11 +6,10 @@ import io.grpc.ServerBuilder
 import io.grpc.Status
 import io.grpc.StatusRuntimeException
 import io.grpc.stub.StreamObserver
-import rx.Subscriber
+import io.reactivex.Observable
 import java.io.IOException
 import java.util.logging.Logger
 import proto.*
-import rx.Observable
 
 /**
  * Created by Neville on 9/18/2016.
@@ -63,7 +62,7 @@ class InterchangeServer(serverBuilder: ServerBuilder<*>, port:Int) {
      *
      * <p>See route_guide.proto for details of the methods.
      */
-    private class InterchangeService(): InterchangeServiceGrpc.InterchangeServiceImplBase() {
+    private class InterchangeService: InterchangeServiceGrpc.InterchangeServiceImplBase() {
 
         init{
 
@@ -96,7 +95,7 @@ class InterchangeServer(serverBuilder: ServerBuilder<*>, port:Int) {
                 // Notice that I'm passing the metadata into the SRE.
                 // When you throw the default SRE, the client gets a default, which I believe is Status.Code.INTERNAL,
                 // so to offer more details, you should change it to something else. Refer to the HTTP - gRPC error mapping
-                val error: StatusRuntimeException = StatusRuntimeException(Status.fromCode(Status.Code.INVALID_ARGUMENT)
+                val error = StatusRuntimeException(Status.fromCode(Status.Code.INVALID_ARGUMENT)
                         .withDescription("You supplied an incorrect object ID"), trailerMeta)
 
                 // now send an onError with the error message that you've just created
@@ -112,20 +111,14 @@ class InterchangeServer(serverBuilder: ServerBuilder<*>, port:Int) {
             packages.addAll(names.map {
                 InterchangeProtos.Package.newBuilder().setName(it).build()
             })
-            Observable.from(packages).subscribe(object: Subscriber<InterchangeProtos.Package>() {
-                override fun onCompleted() {
-                    responseObserver.onCompleted()
-                    println("done sending streams to client")
-                }
 
-                override fun onNext(t: InterchangeProtos.Package?) {
-                    responseObserver.onNext(t)
-                    println("sent $t to client")
-                }
-
-                override fun onError(e: Throwable?) {
-                    responseObserver.onError(e)
-                }
+            // return packages as a stream
+            Observable.fromIterable(packages).subscribe({
+                responseObserver.onNext(it)
+            }, {
+                responseObserver.onError(it)
+            }, {
+                responseObserver.onCompleted()
             })
         }
 

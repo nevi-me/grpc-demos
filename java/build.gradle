@@ -11,29 +11,31 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 buildscript {
-    ext.kotlin_version = '1.1.0-beta-17'
-    ext.grpc_version = '1.0.3'
+    ext.kotlin_version = '1.2.0'
+    ext.grpc_version = '1.8.0'
 
     repositories {
+        mavenLocal()
         mavenCentral()
-        maven { url 'https://dl.bintray.com/kotlin/kotlin-eap-1.1' }
+        maven { url 'https://dl.bintray.com/kotlin/kotlin-eap-1.2' }
     }
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.7.7'
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.3'
     }
 }
 
 repositories {
+//    mavenLocal()
     mavenCentral()
-    maven { url 'https://dl.bintray.com/kotlin/kotlin-eap-1.1' }
+    maven { url 'https://dl.bintray.com/kotlin/kotlin-eap-1.2' }
 }
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     compile "org.jetbrains.kotlin:kotlin-runtime:$kotlin_version"
-    compile 'io.reactivex:rxjava:1.1.9'
+    compile 'io.reactivex.rxjava2:rxjava:2.1.5'
     compile "io.grpc:grpc-netty:$grpc_version"
     compile "io.grpc:grpc-protobuf:$grpc_version"
     compile "io.grpc:grpc-stub:$grpc_version"
@@ -43,7 +45,7 @@ dependencies {
 
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:3.1.0"
+        artifact = "com.google.protobuf:protoc:3.4.0"
     }
     plugins {
         grpc {
